@@ -1,0 +1,44 @@
+{
+  "manifest_version": 3,
+  "name": "Pingo WhatsApp Session Sync",
+  "version": "1.0.0",
+  "description": "Links a WhatsApp Web session to a Pingo connection. Only accepts configuration from, and only syncs to, Pingo.",
+  "permissions": ["storage", "scripting", "tabs"],
+  "host_permissions": [
+    "https://web.whatsapp.com/*",
+    "https://*.pingonotify.com/*",
+    "https://pingonotify.com/*",
+    "http://localhost/*"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://*.pingonotify.com/*",
+        "https://pingonotify.com/*",
+        "http://localhost/*"
+      ],
+      "js": ["content-bridge.js"],
+      "run_at": "document_idle",
+      "all_frames": false
+    },
+    {
+      "matches": ["https://web.whatsapp.com/*"],
+      "js": ["wa-content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "Pingo WhatsApp Session Sync"
+  },
+  "externally_connectable": {
+    "matches": [
+      "http://localhost/*",
+      "https://*.pingonotify.com/*",
+      "https://pingonotify.com/*"
+    ]
+  }
+}

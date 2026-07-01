@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <style>
+    body { font: 13px/1.4 system-ui, sans-serif; width: 300px; margin: 0; padding: 14px; color: #111; }
+    h3 { margin: 0 0 8px; font-size: 15px; }
+    .row { margin: 4px 0; }
+    .k { color: #666; }
+    .v { font-weight: 600; word-break: break-all; }
+    .ok { color: #128c7e; }
+    .err { color: #a00; }
+    .box { background: #f5f5f5; border-radius: 6px; padding: 8px; margin: 6px 0; }
+    button { width: 100%; padding: 8px; margin-top: 8px; border: 0; border-radius: 6px;
+             background: #128c7e; color: #fff; font-weight: 600; cursor: pointer; }
+    code { background: #eee; padding: 1px 4px; border-radius: 4px; font-size: 11px; }
+  </style>
+</head>
+<body>
+  <h3>Pingo WhatsApp Sync</h3>
+  <div class="box" id="config">Loading…</div>
+  <div class="box" id="state"></div>
+  <button id="sync">Sync now</button>
+  <p class="k">Only Pingo (<code>pingonotify.com</code>) can configure this extension — see the README.</p>
+  <script src="popup.js"></script>
+</body>
+</html>

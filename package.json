@@ -1,0 +1,20 @@
+{
+  "name": "pingo-wa-sync",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "Extensao MV3 (TypeScript) que recebe config de qualquer site e sincroniza a sessao do WhatsApp Web para uma API automaticamente.",
+  "scripts": {
+    "build": "node esbuild.mjs",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "devDependencies": {
+    "@types/chrome": "*",
+    "@types/node": "*",
+    "esbuild": "*",
+    "typescript": "*",
+    "vitest": "*"
+  }
+}
