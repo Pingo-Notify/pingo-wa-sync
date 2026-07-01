@@ -4,18 +4,70 @@
  *    (e.g. Pingo) via the content-bridge, and stores it.
  *  - Answers a detection handshake so a page can tell the extension is installed.
  *  - When WhatsApp Web is logged in, extracts the session and POSTs to API_URL.
- *  - On a successful sync: CLEARS the stored config and navigates the tab back to
- *    returnUrl (Pingo goback).
+ *  - On a successful sync: CLEARS the stored config, waits a short delay, then in one
+ *    atomic in-page step wipes this tab's WhatsApp session (localStorage + IndexedDB,
+ *    WITHOUT logging out) and redirects it to the Pingo connections page (derived from
+ *    returnUrl's origin). Clearing and redirecting together is what stops WhatsApp Web
+ *    from reloading itself over the redirect. The copied session reuses THIS device's
+ *    identity, so leaving WhatsApp Web connected/reconnectable here while the backend
+ *    connects with the same session makes WhatsApp flap between the two.
  */
 import { parseConfigMessage, mergeConfig, isConfigComplete, sanitizeReturnUrl } from './lib/config';
 import { isAllowedOrigin, isAllowedApiUrl } from './lib/origins';
 import { buildSyncRequest } from './lib/payload';
 import { shouldSync } from './lib/sync-state';
 import type { SyncConfig, SyncGuardState } from './types';
-import { extractWhatsAppSessionPage } from './injected/page-functions';
+import { extractWhatsAppSessionPage, clearSessionAndRedirectPage } from './injected/page-functions';
 
 const CONFIG_KEY = 'config';
 const STATE_KEY = 'syncState';
+
+/**
+ * Delay applied after a successful sync before disconnecting the live WhatsApp
+ * session, giving the backend a moment to take over the copied session cleanly.
+ */
+export const POST_SYNC_DISCONNECT_DELAY_MS = 3000;
+
+function delay(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Build the Pingo connections page URL from the returnUrl's (Pingo) origin, e.g.
+ * "https://app.pingonotify.com/dashboard/connections". Returns null when returnUrl
+ * is missing or not an http(s) URL.
+ */
+function connectionsUrl(returnUrl?: string): string | null {
+  if (!returnUrl || !/^https?:\/\//i.test(returnUrl)) return null;
+  try {
+    return new URL('/dashboard/connections', returnUrl).toString();
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * Clear this tab's WhatsApp session (no logout) AND redirect it to the Pingo
+ * connections page, as a single atomic step inside the page. Doing both in one
+ * injected, synchronous function is what makes the redirect reliable: clearing and
+ * navigating in separate steps let WhatsApp Web reload itself (reacting to the wiped
+ * storage) and override the redirect. If injection fails (tab gone / not injectable),
+ * fall back to a plain tab navigation.
+ */
+async function finalizeAndRedirect(tabId: number, returnUrl?: string): Promise<void> {
+  const dest = connectionsUrl(returnUrl) ?? 'about:blank';
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      world: 'MAIN',
+      func: clearSessionAndRedirectPage,
+      args: [dest],
+    });
+  } catch {
+    // Could not inject — best-effort direct navigation so the tab still leaves WA.
+    try { await chrome.tabs.update(tabId, { url: dest }); } catch { /* tab gone */ }
+  }
+}
 
 async function getConfig(): Promise<SyncConfig> {
   const r = await chrome.storage.local.get(CONFIG_KEY);
@@ -43,7 +95,7 @@ function redact(c: SyncConfig) {
   };
 }
 
-/** Extract the session (MAIN world) and POST to API_URL; on success clear + goback. */
+/** Extract the session (MAIN world) and POST to API_URL; on success clear + redirect to connections. */
 async function trySync(tabId: number, wid: string | null): Promise<{ ok: boolean; status?: number | string; error?: string }> {
   const config = await getConfig();
   if (!isConfigComplete(config)) return { ok: false, error: 'incomplete config' };
@@ -83,12 +135,15 @@ async function trySync(tabId: number, wid: string | null): Promise<{ ok: boolean
   await setState({ lastSyncedWid: effectiveWid, lastSyncedAt: now, lastStatus: resp.status });
 
   if (resp.ok) {
-    // Requirement: after a successful sync, clear everything stored, then goback.
+    // After a successful sync: clear the stored config, then — because the copied
+    // session shares this device's identity — wait a short delay and, in one atomic
+    // step, clear this tab's WhatsApp session from the browser (no logout) and
+    // redirect it to the Pingo connections page, so it does not conflict with the
+    // backend.
     const returnUrl = config.returnUrl;
     await clearConfig();
-    if (returnUrl && /^https?:\/\//i.test(returnUrl)) {
-      try { await chrome.tabs.update(tabId, { url: returnUrl }); } catch { /* tab gone */ }
-    }
+    await delay(POST_SYNC_DISCONNECT_DELAY_MS);
+    await finalizeAndRedirect(tabId, returnUrl);
   }
   return { ok: resp.ok, status: resp.status };
 }

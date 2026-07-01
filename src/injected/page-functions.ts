@@ -50,6 +50,44 @@ export async function detectWhatsAppLoginPage() {
   return out;
 }
 
+/**
+ * Clear this browser's WhatsApp session AND redirect the tab — as one atomic,
+ * SYNCHRONOUS step inside the page. The order matters: we remove the login keys and
+ * then call location.replace() with NO await in between, so the redirect starts
+ * before the WhatsApp app can react to the wiped storage by reloading itself back
+ * to web.whatsapp.com (which is what was overriding our redirect).
+ *
+ * This does NOT log out / unlink the device: it only deletes the local session copy,
+ * so the copied session stays valid for the backend. Removing the localStorage login
+ * keys already de-authenticates the page (next load shows the QR); the IndexedDB
+ * deletes are fired best-effort and finalize once this navigation closes the app's
+ * open DB connections.
+ */
+export function clearSessionAndRedirectPage(redirectUrl) {
+  // 1) Synchronously drop the login material (noise keys, salt, wid/lid). This is
+  //    the step that actually prevents a future reconnect, and it cannot be raced.
+  try {
+    const lsKeys = ['WANoiseInfo', 'WANoiseInfoIv', 'WAWebEncKeySalt', 'WALid', 'last-wid-md'];
+    for (const k of lsKeys) {
+      try { localStorage.removeItem(k); } catch (_) { /* ignore one key */ }
+    }
+  } catch (_) { /* localStorage unavailable */ }
+
+  // 2) Fire-and-forget delete of the session databases. We do NOT await: awaiting a
+  //    blocked delete (the app still holds connections) is exactly what gave WhatsApp
+  //    time to reload. The delete is queued and finalizes when the navigation below
+  //    closes those connections.
+  try {
+    for (const db of ['signal-storage', 'wawc_db_enc']) {
+      try { indexedDB.deleteDatabase(db); } catch (_) { /* ignore one db */ }
+    }
+  } catch (_) { /* indexedDB unavailable */ }
+
+  // 3) Drop any unload guard and hard-redirect from within the page, immediately.
+  try { window.onbeforeunload = null; } catch (_) { /* ignore */ }
+  window.location.replace(redirectUrl);
+}
+
 /** Extract + decrypt the full session and return a JSON-serializable object. */
 export async function extractWhatsAppSessionPage() {
   function b64(bytes) {
