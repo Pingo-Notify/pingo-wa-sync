@@ -85,3 +85,5 @@ export const CONFIG_ACK = 'WA_SYNC_CONFIG_ACK';
 
 export const DETECT_PING = 'WA_SYNC_DETECT';
 export const DETECT_PONG = 'WA_SYNC_DETECT_ACK';
+/** Bridge -> page: unsolicited "I'm here" broadcast, emitted when the bridge loads. */
+export const DETECT_ANNOUNCE = 'WA_SYNC_ANNOUNCE';

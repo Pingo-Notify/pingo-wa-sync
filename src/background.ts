@@ -228,6 +228,45 @@ async function handleMessage(msg: unknown, senderOrigin?: string): Promise<Messa
   return { ok: false, error: 'unknown type' };
 }
 
+// Must mirror manifest.json content_scripts[content-bridge].matches so we only
+// ever inject the bridge where it would already run on a normal page load.
+const BRIDGE_TAB_MATCHES = [
+  'https://*.pingonotify.com/*',
+  'https://pingonotify.com/*',
+  'http://localhost/*',
+];
+
+// Chrome does not run a freshly-installed content script in tabs that were
+// already open — those pages would have to be reloaded before the bridge exists
+// and Pingo can detect the extension. Inject the bridge into any already-open
+// Pingo tab on install so detection works without a manual refresh. The bridge
+// is idempotent (guards against a duplicate 'message' listener), so this stays
+// safe even if a tab also loads it the normal way.
+async function injectBridgeIntoOpenTabs(): Promise<void> {
+  let tabs: chrome.tabs.Tab[];
+  try {
+    tabs = await chrome.tabs.query({ url: BRIDGE_TAB_MATCHES });
+  } catch (e) {
+    log('injectBridge: tabs.query failed ->', String((e as Error)?.message || e));
+    return;
+  }
+  log('injectBridge: found', tabs.length, 'open Pingo tab(s)');
+  for (const t of tabs) {
+    if (t.id == null) continue;
+    try {
+      await chrome.scripting.executeScript({ target: { tabId: t.id }, files: ['content-bridge.js'] });
+      log('injectBridge: injected into tab', t.id, t.url);
+    } catch (e) {
+      log('injectBridge: skipped tab', t.id, '->', String((e as Error)?.message || e));
+    }
+  }
+}
+
+chrome.runtime.onInstalled.addListener((details) => {
+  log('onInstalled:', details.reason, '— injecting bridge into open Pingo tabs');
+  void injectBridgeIntoOpenTabs();
+});
+
 log('service worker booted — version', chrome.runtime.getManifest().version);
 
 chrome.runtime.onMessage.addListener((msg: unknown, sender, sendResponse) => {
