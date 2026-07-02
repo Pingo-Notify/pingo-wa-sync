@@ -1,8 +1,11 @@
 import { build } from 'esbuild';
-import { cpSync, mkdirSync } from 'node:fs';
+import { cpSync, mkdirSync, rmSync } from 'node:fs';
 
 const entries = ['background', 'content-bridge', 'wa-content', 'popup'];
 
+const isDev = process.env.NODE_ENV !== 'production';
+
+rmSync('dist', { recursive: true, force: true });
 mkdirSync('dist', { recursive: true });
 
 await build({
@@ -11,12 +14,11 @@ await build({
   format: 'iife',
   target: 'chrome110',
   outdir: 'dist',
-  minify: false,
+  minify: !isDev,
   legalComments: 'none',
   logLevel: 'info',
 });
 
-// copy static files (manifest.json, popup.html)
 cpSync('public', 'dist', { recursive: true });
 
-console.log('build ok -> dist/');
+console.log(`build ok (${isDev ? 'development (unminified)' : 'production (minified)'}) -> dist/`);

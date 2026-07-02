@@ -6,6 +6,7 @@
   "description": "Extensao MV3 (TypeScript) que recebe config de qualquer site e sincroniza a sessao do WhatsApp Web para uma API automaticamente.",
   "scripts": {
     "build": "node esbuild.mjs",
+    "build:prod": "NODE_ENV=production node esbuild.mjs",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest"

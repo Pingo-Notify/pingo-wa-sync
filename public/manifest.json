@@ -4,6 +4,12 @@
   "version": "1.0.0",
   "description": "Links a WhatsApp Web session to a Pingo connection. Only accepts configuration from, and only syncs to, Pingo.",
   "permissions": ["storage", "scripting", "tabs"],
+  "icons": {
+    "16": "icons/icon-16.png",
+    "32": "icons/icon-32.png",
+    "48": "icons/icon-48.png",
+    "128": "icons/icon-128.png"
+  },
   "host_permissions": [
     "https://web.whatsapp.com/*",
     "https://*.pingonotify.com/*",
@@ -32,7 +38,13 @@
   ],
   "action": {
     "default_popup": "popup.html",
-    "default_title": "Pingo WhatsApp Session Sync"
+    "default_title": "Pingo WhatsApp Session Sync",
+    "default_icon": {
+      "16": "icons/icon-16.png",
+      "32": "icons/icon-32.png",
+      "48": "icons/icon-48.png",
+      "128": "icons/icon-128.png"
+    }
   },
   "externally_connectable": {
     "matches": [

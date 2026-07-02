@@ -14,7 +14,7 @@ describe('computeLoggedIn', () => {
 
 describe('shouldStopRetrying', () => {
   it('stops when the sync succeeded', () => {
-    expect(shouldStopRetrying({ ok: true, status: 200 } as any)).toBe(true);
+    expect(shouldStopRetrying({ ok: true, status: 200 })).toBe(true);
   });
   it('retries while the session is not fully written yet', () => {
     expect(shouldStopRetrying({ ok: false, error: 'incomplete session (not logged in?)' })).toBe(false);
@@ -29,7 +29,7 @@ describe('shouldStopRetrying', () => {
     expect(shouldStopRetrying({ ok: false, error: 'api url not allowed' })).toBe(true);
   });
   it('stops on an HTTP error status (no error field) or an unknown/missing response', () => {
-    expect(shouldStopRetrying({ ok: false, status: 500 } as any)).toBe(true);
+    expect(shouldStopRetrying({ ok: false, status: 500 })).toBe(true);
     expect(shouldStopRetrying({ ok: false, error: 'something new' })).toBe(true);
     expect(shouldStopRetrying(undefined)).toBe(true);
     expect(shouldStopRetrying(null)).toBe(true);

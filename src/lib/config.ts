@@ -1,6 +1,5 @@
 import { CONFIG_SOURCE, type SyncConfig, type CompleteConfig } from '../types';
 
-/** First non-empty (trimmed) string value from the list. */
 function firstString(...vals: unknown[]): string | undefined {
   for (const v of vals) {
     if (typeof v === 'string' && v.trim() !== '') return v.trim();
@@ -8,12 +7,6 @@ function firstString(...vals: unknown[]): string | undefined {
   return undefined;
 }
 
-/**
- * Validate and normalize a message received from a website.
- * Accepts { source: 'WA_SYNC_CONFIG', payload?: {...} } with field aliases
- * (name/Nome, apiUrl/API_URL, authorization/Authorization, returnUrl/return_url/origin).
- * Returns only the recognized fields, or null if the message is not valid.
- */
 export function parseConfigMessage(data: unknown): SyncConfig | null {
   if (!data || typeof data !== 'object') return null;
   const d = data as Record<string, unknown>;
@@ -38,7 +31,6 @@ export function parseConfigMessage(data: unknown): SyncConfig | null {
   return Object.keys(out).length > 0 ? out : null;
 }
 
-/** Merge an existing config with a partial update (undefined does not overwrite). */
 export function mergeConfig(existing: SyncConfig, update: SyncConfig): SyncConfig {
   return {
     name: update.name ?? existing.name,
@@ -48,15 +40,10 @@ export function mergeConfig(existing: SyncConfig, update: SyncConfig): SyncConfi
   };
 }
 
-/** True only when the three core fields are present and non-empty. */
 export function isConfigComplete(c: SyncConfig): c is CompleteConfig {
   return !!(c.name && c.apiUrl && c.authorization);
 }
 
-/**
- * Keep returnUrl only if it is an http(s) URL under the sender's origin
- * (anti open-redirect). Returns a config with returnUrl dropped otherwise.
- */
 export function sanitizeReturnUrl(config: SyncConfig, senderOrigin: string | undefined): SyncConfig {
   if (!config.returnUrl) return config;
   const ok =
