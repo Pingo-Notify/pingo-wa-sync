@@ -2,9 +2,12 @@
  * popup.ts — shows the stored config and the last sync status;
  * button to force a sync.
  */
+import { debugLog } from './lib/debug';
+
 interface StatusResponse {
   config?: { name?: string; apiUrl?: string; authorization?: string };
   state?: { lastSyncedWid?: string | null; lastSyncedAt?: number; lastStatus?: number | string };
+  debug?: boolean;
 }
 
 function el(id: string): HTMLElement {
@@ -32,6 +35,7 @@ function render(status: StatusResponse): void {
 
 async function refresh(): Promise<void> {
   const status = await chrome.runtime.sendMessage({ type: 'get-status' });
+  debugLog('popup status:', status);
   render(status || {});
 }
 
