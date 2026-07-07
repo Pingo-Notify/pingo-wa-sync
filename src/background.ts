@@ -100,6 +100,7 @@ function redact(c: SyncConfig): RedactedConfig {
     apiUrl: c.apiUrl,
     authorization: c.authorization ? '***' : undefined,
     returnUrl: c.returnUrl,
+    settings: c.settings,
   };
 }
 
@@ -232,6 +233,7 @@ async function handleMessage(msg: unknown, senderOrigin?: string): Promise<Messa
 // ever inject the bridge where it would already run on a normal page load.
 const BRIDGE_TAB_MATCHES = [
   'https://*.pingonotify.com/*',
+  'https://stage.pingonotify.com/*',
   'https://pingonotify.com/*',
   'http://localhost/*',
 ];

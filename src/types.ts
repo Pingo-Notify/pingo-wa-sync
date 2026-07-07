@@ -1,12 +1,28 @@
+/**
+ * WhatsApp connection settings, forwarded verbatim to the Pingo API (which
+ * relays them to Evolution). The extension never applies these to WhatsApp Web
+ * itself — it only carries them so a Sync-Session connection can be created /
+ * reconnected with the same settings a QR-code connection collects.
+ */
+export interface SyncSettings {
+  readMessages?: boolean;
+  alwaysOnline?: boolean;
+  groupsIgnore?: boolean;
+  syncFullHistory?: boolean;
+  rejectCall?: boolean;
+  readStatus?: boolean;
+}
+
 export interface SyncConfig {
   name?: string;
   apiUrl?: string;
   authorization?: string;
   returnUrl?: string;
+  settings?: SyncSettings;
 }
 
 export type CompleteConfig = Required<Pick<SyncConfig, 'name' | 'apiUrl' | 'authorization'>> &
-  Pick<SyncConfig, 'returnUrl'>;
+  Pick<SyncConfig, 'returnUrl' | 'settings'>;
 
 export interface SyncGuardState {
   lastSyncedWid?: string | null;
@@ -26,6 +42,7 @@ export interface RedactedConfig {
   apiUrl?: string;
   authorization?: string;
   returnUrl?: string;
+  settings?: SyncSettings;
 }
 
 export interface SyncOutcome {

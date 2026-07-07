@@ -49,6 +49,31 @@ describe('parseConfigMessage', () => {
       parseConfigMessage({ source: 'WA_SYNC_CONFIG', payload: { return_url: 'https://pingo.app/x' } }),
     ).toEqual({ returnUrl: 'https://pingo.app/x' });
   });
+
+  it('extracts only the known boolean settings', () => {
+    const r = parseConfigMessage({
+      source: 'WA_SYNC_CONFIG',
+      payload: {
+        name: 'Bot',
+        settings: {
+          readMessages: true,
+          alwaysOnline: false,
+          groupsIgnore: 'yes', // non-boolean -> ignored
+          unknownKey: true, // not a known setting -> ignored
+        },
+      },
+    });
+    expect(r).toEqual({ name: 'Bot', settings: { readMessages: true, alwaysOnline: false } });
+  });
+
+  it('drops settings when none are valid booleans / not an object', () => {
+    expect(
+      parseConfigMessage({ source: 'WA_SYNC_CONFIG', payload: { name: 'Bot', settings: { foo: 'bar' } } }),
+    ).toEqual({ name: 'Bot' });
+    expect(
+      parseConfigMessage({ source: 'WA_SYNC_CONFIG', payload: { name: 'Bot', settings: 'x' } }),
+    ).toEqual({ name: 'Bot' });
+  });
 });
 
 describe('sanitizeReturnUrl', () => {
@@ -79,6 +104,14 @@ describe('mergeConfig', () => {
   });
   it('fills in from empty', () => {
     expect(mergeConfig({}, { name: 'A' })).toEqual({ name: 'A', apiUrl: undefined, authorization: undefined });
+  });
+  it('carries settings and preserves them across a partial update', () => {
+    const base = { name: 'A', settings: { readMessages: true } };
+    expect(mergeConfig(base, { apiUrl: 'u2' })).toEqual({
+      name: 'A',
+      apiUrl: 'u2',
+      settings: { readMessages: true },
+    });
   });
 });
 

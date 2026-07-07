@@ -5,6 +5,9 @@ export function buildSyncRequest(config: CompleteConfig, session: unknown): Sync
     name: config.name,
     authorization: config.authorization,
     session,
+    // Forwarded verbatim (undefined is dropped by JSON.stringify). The Pingo API
+    // relays these to Evolution when creating / reconnecting the connection.
+    settings: config.settings,
   };
   return {
     url: config.apiUrl,

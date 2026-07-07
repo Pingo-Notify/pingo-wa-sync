@@ -28,4 +28,15 @@ describe('buildSyncRequest', () => {
     const b = buildSyncRequest(config, { x: 1 });
     expect(a).toEqual(b);
   });
+
+  it('omits settings from the body when absent', () => {
+    const r = buildSyncRequest(config, { x: 1 });
+    expect(JSON.parse(r.body)).not.toHaveProperty('settings');
+  });
+
+  it('forwards settings in the body when present', () => {
+    const withSettings = { ...config, settings: { readMessages: true, rejectCall: false } };
+    const r = buildSyncRequest(withSettings, { x: 1 });
+    expect(JSON.parse(r.body).settings).toEqual({ readMessages: true, rejectCall: false });
+  });
 });
