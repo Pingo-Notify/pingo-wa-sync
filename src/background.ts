@@ -2,6 +2,7 @@ import { parseConfigMessage, mergeConfig, isConfigComplete, sanitizeReturnUrl } 
 import { isAllowedOrigin, isAllowedApiUrl } from './lib/origins';
 import { buildSyncRequest } from './lib/payload';
 import { shouldSync } from './lib/sync-state';
+import { SYNC_PROGRESS } from './types';
 import type {
   MessageResponse,
   RedactedConfig,
@@ -9,6 +10,7 @@ import type {
   SyncConfig,
   SyncGuardState,
   SyncOutcome,
+  SyncStage,
 } from './types';
 import { extractWhatsAppSessionPage, clearSessionAndRedirectPage } from './injected/page-functions';
 import { debugLog as log } from './lib/debug';
@@ -18,9 +20,20 @@ const CONFIG_KEY = 'config';
 const STATE_KEY = 'syncState';
 
 export const POST_SYNC_DISCONNECT_DELAY_MS = 3000;
+/** Brief pause so the "payload carregado" toast is readable before "carregando". */
+export const STAGE_READ_DELAY_MS = 600;
 
 function delay(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/**
+ * Push a lifecycle stage to the tab's on-screen toast. Fire-and-forget: if no
+ * content script is listening (tab closed, not a WhatsApp tab) we just ignore
+ * the rejection — this never affects the sync outcome.
+ */
+function emitStage(tabId: number, stage: SyncStage, detail?: string): void {
+  void chrome.tabs.sendMessage(tabId, { type: SYNC_PROGRESS, stage, detail }).catch(() => {});
 }
 
 function describeSession(session: unknown): unknown {
@@ -108,9 +121,13 @@ async function runSync(tabId: number, wid: string | null): Promise<SyncOutcome> 
   log('runSync: start — tab', tabId, 'wid', wid ?? '(none)');
   const config = await getConfig();
   log('runSync: config', redact(config), '-> complete:', isConfigComplete(config));
-  if (!isConfigComplete(config)) return { ok: false, error: 'incomplete config' };
+  if (!isConfigComplete(config)) {
+    emitStage(tabId, 'payload-missing');
+    return { ok: false, error: 'incomplete config' };
+  }
   if (!isAllowedApiUrl(config.apiUrl)) {
     log('runSync: api url not allowed ->', config.apiUrl);
+    emitStage(tabId, 'error', 'URL da API não autorizada.');
     return { ok: false, error: 'api url not allowed' };
   }
 
@@ -120,6 +137,12 @@ async function runSync(tabId: number, wid: string | null): Promise<SyncOutcome> 
     log('runSync: skipped by cooldown — lastSyncedWid', state.lastSyncedWid, 'lastSyncedAt', state.lastSyncedAt);
     return { ok: false, error: 'cooldown' };
   }
+
+  // Payload present and past the cooldown guard: confirm to the user, pause so
+  // that step is readable, then move on to pulling the session.
+  emitStage(tabId, 'payload-loaded');
+  await delay(STAGE_READ_DELAY_MS);
+  emitStage(tabId, 'loading');
 
   log('runSync: extracting session (MAIN world) from tab', tabId);
   let rawSession: unknown;
@@ -161,6 +184,7 @@ async function runSync(tabId: number, wid: string | null): Promise<SyncOutcome> 
     await setState({ lastSyncedWid: effectiveWid, lastSyncedAt: now, lastStatus: resp.status });
     const returnUrl = config.returnUrl;
     await clearConfig();
+    emitStage(tabId, 'redirecting');
     log('runSync: synced ok — config cleared; disconnecting + redirecting in', POST_SYNC_DISCONNECT_DELAY_MS, 'ms to', returnUrl);
     await delay(POST_SYNC_DISCONNECT_DELAY_MS);
     await finalizeAndRedirect(tabId, returnUrl);
@@ -172,6 +196,7 @@ async function runSync(tabId: number, wid: string | null): Promise<SyncOutcome> 
   try { body = await resp.text(); } catch {}
   const snippet = body.replace(/\s+/g, ' ').trim().slice(0, 500);
   log('runSync: POST rejected', resp.status, '— body:', snippet || '(empty)');
+  emitStage(tabId, 'error', `Erro ${resp.status} ao enviar a sessão.`);
   return { ok: false, status: resp.status, error: `http ${resp.status}: ${snippet.slice(0, 200) || '(empty body)'}` };
 }
 

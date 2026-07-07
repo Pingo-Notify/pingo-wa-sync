@@ -1,4 +1,5 @@
 import { debugLog } from './lib/debug';
+import { getUiSettings, setUiSettings } from './lib/ui-settings';
 import type { MessageResponse } from './types';
 
 type StatusResponse = Pick<MessageResponse, 'config' | 'state'>;
@@ -76,4 +77,18 @@ syncBtn.addEventListener('click', async () => {
   }
 });
 
+// --- Settings: on-screen sync toast toggle ---------------------------------
+const toastToggle = el('toast-toggle') as HTMLInputElement;
+
+toastToggle.addEventListener('change', () => {
+  void setUiSettings({ toastEnabled: toastToggle.checked });
+  debugLog('popup: toastEnabled ->', toastToggle.checked);
+});
+
+async function loadSettings(): Promise<void> {
+  const s = await getUiSettings();
+  toastToggle.checked = s.toastEnabled;
+}
+
+void loadSettings();
 void refresh();

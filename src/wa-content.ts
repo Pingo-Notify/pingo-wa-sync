@@ -1,6 +1,42 @@
 import { computeLoggedIn, shouldStopRetrying } from './lib/detect';
 import { debugLog } from './lib/debug';
-import type { SyncOutcome } from './types';
+import { getToast } from './wa-toast';
+import { isSyncStage } from './lib/sync-stage';
+import { getUiSettings, normalizeUiSettings } from './lib/ui-settings';
+import { SYNC_PROGRESS, UI_SETTINGS_KEY, type SyncOutcome, type SyncStage } from './types';
+
+// --- On-screen status toast (bottom-right of WhatsApp Web) ------------------
+// The background pushes SyncStage updates here via chrome.tabs.sendMessage; the
+// user can turn the whole thing off from the extension popup.
+
+let toastEnabled = true;
+let toastShown = false;
+
+function renderStage(stage: SyncStage, detail?: string): void {
+  if (!toastEnabled) return;
+  toastShown = true;
+  getToast().show(stage, detail);
+}
+
+void getUiSettings().then((s) => {
+  toastEnabled = s.toastEnabled;
+  if (toastEnabled) renderStage('init');
+});
+
+// React live when the user flips the switch in the popup.
+chrome.storage.onChanged.addListener((changes, area) => {
+  if (area !== 'local' || !changes[UI_SETTINGS_KEY]) return;
+  toastEnabled = normalizeUiSettings(changes[UI_SETTINGS_KEY].newValue).toastEnabled;
+  if (!toastEnabled && toastShown) getToast().destroy();
+});
+
+// Progress updates streamed from the background service worker.
+chrome.runtime.onMessage.addListener((msg: unknown) => {
+  const m = (typeof msg === 'object' && msg ? msg : {}) as Record<string, unknown>;
+  if (m.type === SYNC_PROGRESS && isSyncStage(m.stage)) {
+    renderStage(m.stage, typeof m.detail === 'string' ? m.detail : undefined);
+  }
+});
 
 async function hasSignalReg(): Promise<boolean> {
   try {

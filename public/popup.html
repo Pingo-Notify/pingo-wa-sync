@@ -167,6 +167,53 @@
     .btn-primary.is-busy .icon { display: none; }
     @keyframes spin { to { transform: rotate(360deg); } }
 
+    /* ---------- Settings toggle ---------- */
+    .toggle {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      cursor: pointer;
+    }
+    .toggle-text { font-size: 12.5px; font-weight: 600; }
+    .toggle-text small {
+      display: block;
+      margin-top: 2px;
+      font-weight: 400;
+      font-size: 11px;
+      color: var(--text-muted);
+    }
+    .toggle-input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+    .toggle-track {
+      position: relative;
+      flex: 0 0 auto;
+      width: 38px;
+      height: 22px;
+      border-radius: 999px;
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      transition: background 0.18s, border-color 0.18s;
+    }
+    .toggle-thumb {
+      position: absolute;
+      top: 2px;
+      left: 2px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: var(--text-muted);
+      transition: transform 0.18s, background 0.18s;
+    }
+    .toggle-input:checked + .toggle-track {
+      background: rgba(110, 227, 26, 0.22);
+      border-color: rgba(110, 227, 26, 0.5);
+    }
+    .toggle-input:checked + .toggle-track .toggle-thumb {
+      transform: translateX(16px);
+      background: var(--accent);
+    }
+    .toggle-input:focus-visible + .toggle-track { box-shadow: 0 0 0 3px var(--accent-glow); }
+
     /* ---------- Footer ---------- */
     .foot {
       margin: 12px 2px 0;
@@ -220,6 +267,18 @@
       <span class="spinner"></span>
       <span id="sync-label">Sync now</span>
     </button>
+
+    <section class="card" style="margin-top: 10px;">
+      <div class="card-title">Settings</div>
+      <label class="toggle" for="toast-toggle">
+        <span class="toggle-text">
+          On-screen sync status
+          <small>Show progress toasts on WhatsApp Web.</small>
+        </span>
+        <input type="checkbox" id="toast-toggle" class="toggle-input" />
+        <span class="toggle-track"><span class="toggle-thumb"></span></span>
+      </label>
+    </section>
 
     <p class="foot">
       Only Pingo (<code>pingonotify.com</code>) can configure this extension — see the README.
